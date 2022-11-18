@@ -1,64 +1,52 @@
 import { Request, Response } from 'express';
-import pg from 'pg';
+import { PrismaClient } from '@prisma/client';
 
-const Pool = pg.Pool;
+const prisma = new PrismaClient();
 
-const pool = new Pool({
-  user: process.env.USER,
-  host: process.env.HOST,
-  database: process.env.DATABASE,
-  password: process.env.PASSWORD,
-  port: parseInt(process.env.DB_PORT as string),
-});
-
-export const getUsers = (req: Request, res: Response) => {
-  pool.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
-    if (error) throw error;
-    res.status(200).json(results.rows);
-  });
-};
-
-export const getUserById = (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-
-  pool.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
-    if (error) throw error;
-    res.status(200).json(results.rows);
-  });
-};
-
-export const createUser = (req: Request, res: Response) => {
-  const { name, email } = req.body;
-
-  pool.query(
-    'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
-    [name, email],
-    (error, results) => {
-      if (error) throw error;
-      res.status(201).send(`User added with ID: ${results.rows[0].id}`);
+export const getUsers = async (req: Request, res: Response) => {
+  // 'SELECT * FROM users ORDER BY id ASC'
+  const users = await prisma.users.findMany({
+    orderBy: {
+      name: 'asc',
     },
-  );
+  });
+  res.status(200).json(users);
 };
 
-export const updateUser = (req: Request, res: Response) => {
+export const getUserById = async (req: Request, res: Response) => {
+  // 'SELECT * FROM users WHERE id = $1'
+  const id = parseInt(req.params.id);
+  const user = await prisma.users.findUnique({
+    where: { id },
+  });
+  res.status(200).json(user);
+};
+
+export const createUser = async (req: Request, res: Response) => {
+  // 'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',
+  const { name, email } = req.body;
+  const user = await prisma.users.create({
+    data: { name, email },
+  });
+  res.status(201).json(user);
+};
+
+export const updateUser = async (req: Request, res: Response) => {
+  // 'UPDATE users SET name = $1, email = $2 WHERE id = $3',
   const id = parseInt(req.params.id);
   const { name, email } = req.body;
-
-  pool.query(
-    'UPDATE users SET name = $1, email = $2 WHERE id = $3',
-    [name, email, id],
-    (error, results) => {
-      if (error) throw error;
-      res.status(200).send(`User modified with ID: ${id}`);
-    },
-  );
+  const user = await prisma.users.update({
+    where: { id },
+    data: { name, email },
+  });
+  res.status(200).json(user);
 };
 
-export const deleteUser = (req: Request, res: Response) => {
+export const deleteUser = async (req: Request, res: Response) => {
+  // 'DELETE FROM users WHERE id = $1'
   const id = parseInt(req.params.id);
-
-  pool.query('DELETE FROM users WHERE id = $1', [id], (error, results) => {
-    if (error) throw error;
-    res.status(200).send(`User modified with ID: ${id}`);
+  await prisma.users.delete({
+    where: { id },
   });
+  res.status(204).send(`Removed user with ID: ${id}`);
 };
