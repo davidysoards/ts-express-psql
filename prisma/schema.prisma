@@ -12,5 +12,5 @@ model Users {
   name  String? @db.VarChar(30)
   email String? @db.VarChar(30)
 
-  @@map("user")
+  @@map("users")
 }
